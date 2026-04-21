@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Work Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0f0f10;
+    --bg2: #1a1a1d;
+    --bg3: #242428;
+    --border: #2e2e33;
+    --border2: #3a3a40;
+    --text: #f0f0f0;
+    --text2: #9090a0;
+    --text3: #555560;
+    --accent: #c8f060;
+    --accent-dim: #8aaa30;
+    --red: #ff6060;
+    --amber: #ffb830;
+    --blue: #60b8ff;
+    --radius: 10px;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+  /* AUTH */
+  #auth-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(ellipse at 20% 50%, rgba(200,240,96,0.05) 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 20%, rgba(96,184,255,0.04) 0%, transparent 50%);
+  }
+  .auth-box {
+    width: 100%;
+    max-width: 380px;
+    padding: 2.5rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .auth-logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+  .auth-title { font-size: 22px; font-weight: 600; margin-bottom: 0.25rem; }
+  .auth-sub { color: var(--text2); font-size: 13px; margin-bottom: 1.75rem; }
+  .auth-label { font-size: 12px; color: var(--text2); margin-bottom: 5px; display: block; }
+  .auth-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 1rem;
+  }
+  .auth-input:focus { border-color: var(--accent); }
+  .auth-btn {
+    width: 100%;
+    padding: 11px;
+    background: var(--accent);
+    color: #0f0f10;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    margin-top: 0.25rem;
+  }
+  .auth-btn:hover { opacity: 0.88; }
+  .auth-toggle {
+    margin-top: 1.25rem;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text2);
+  }
+  .auth-toggle span { color: var(--accent); cursor: pointer; }
+  .auth-toggle span:hover { text-decoration: underline; }
+  .auth-error {
+    background: rgba(255,96,96,0.1);
+    border: 1px solid rgba(255,96,96,0.3);
+    color: var(--red);
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .auth-msg {
+    background: rgba(200,240,96,0.08);
+    border: 1px solid rgba(200,240,96,0.25);
+    color: var(--accent);
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  /* APP */
+  #app-screen { display: none; min-height: 100vh; flex-direction: column; }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 1rem; }
+  .topbar-logo { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; }
+  .topbar-date { font-size: 13px; color: var(--text2); }
+  .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
+  .user-email { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+  .signout-btn {
+    font-size: 12px;
+    color: var(--text2);
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .signout-btn:hover { color: var(--red); border-color: var(--red); }
+
+  .main { flex: 1; padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+
+  /* STAT CARDS */
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+  }
+  .stat-label { font-size: 11px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 500; font-family: var(--mono); color: var(--text); }
+  .stat-sub { font-size: 12px; color: var(--text3); margin-top: 3px; }
+  .progress-bar { height: 3px; background: var(--bg3); border-radius: 2px; margin-top: 8px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s ease; }
+
+  /* PANELS */
+  .panels { display: grid; grid-template-columns: 340px 1fr; gap: 1.25rem; }
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .panel-title { font-size: 11px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* TIMER */
+  .timer-display {
+    font-size: 52px;
+    font-family: var(--mono);
+    font-weight: 400;
+    color: var(--text);
+    text-align: center;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    padding: 0.5rem 0;
+  }
+  .timer-task-label {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text2);
+    min-height: 18px;
+    font-style: italic;
+  }
+  input[type="text"], input[type="email"], input[type="password"], select {
+    font-family: var(--font);
+  }
+  .timer-input {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .timer-input:focus { border-color: var(--accent); }
+  .timer-btns { display: flex; gap: 8px; }
+  .tbtn {
+    flex: 1;
+    padding: 9px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tbtn:hover { background: var(--bg); border-color: var(--border2); }
+  .tbtn.primary { background: var(--accent); color: #0f0f10; border-color: var(--accent); }
+  .tbtn.primary:hover { opacity: 0.88; }
+  .tbtn.running { background: var(--amber); color: #0f0f10; border-color: var(--amber); }
+  .time-log { display: flex; flex-direction: column; gap: 0; max-height: 160px; overflow-y: auto; }
+  .log-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log-dur { font-family: var(--mono); color: var(--accent); font-size: 11px; margin-left: 10px; flex-shrink: 0; }
+  .log-time { font-size: 10px; color: var(--text3); margin-left: 6px; flex-shrink: 0; }
+
+  /* TASKS */
+  .task-add-row { display: flex; gap: 8px; }
+  .task-add-row input {
+    flex: 1;
+    padding: 9px 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .task-add-row input:focus { border-color: var(--accent); }
+  .task-add-row select {
+    padding: 9px 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+  .add-btn {
+    padding: 9px 14px;
+    background: var(--accent);
+    color: #0f0f10;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .add-btn:hover { opacity: 0.88; }
+  .filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filt {
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-size: 11px;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filt:hover { border-color: var(--accent); color: var(--accent); }
+  .filt.active { background: var(--accent); color: #0f0f10; border-color: var(--accent); font-weight: 600; }
+  .task-list { display: flex; flex-direction: column; gap: 0; max-height: 400px; overflow-y: auto; }
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .task-item:last-child { border-bottom: none; }
+  .task-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border2);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .task-check:hover { border-color: var(--accent); }
+  .task-check.done { background: var(--accent); border-color: var(--accent); }
+  .task-check.done::after {
+    content: '';
+    width: 5px;
+    height: 8px;
+    border-right: 2px solid #0f0f10;
+    border-bottom: 2px solid #0f0f10;
+    transform: rotate(45deg) translateY(-1px);
+    display: block;
+  }
+  .task-body { flex: 1; min-width: 0; }
+  .task-text { font-size: 13px; color: var(--text); line-height: 1.4; }
+  .task-text.done { text-decoration: line-through; color: var(--text3); }
+  .task-meta { display: flex; gap: 6px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+  .badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    font-family: var(--mono);
+  }
+  .badge-high { background: rgba(255,96,96,0.12); color: var(--red); }
+  .badge-med { background: rgba(255,184,48,0.12); color: var(--amber); }
+  .badge-low { background: rgba(200,240,96,0.1); color: var(--accent-dim); }
+  .badge-case { background: rgba(96,184,255,0.12); color: var(--blue); }
+  .task-date { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+  .task-del {
+    font-size: 12px;
+    color: var(--text3);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 3px 6px;
+    border-radius: 5px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    margin-top: -1px;
+  }
+  .task-del:hover { color: var(--red); background: rgba(255,96,96,0.08); }
+  .empty { text-align: center; padding: 2.5rem; color: var(--text3); font-size: 13px; }
+  .loading { text-align: center; padding: 1.5rem; color: var(--text3); font-size: 12px; font-family: var(--mono); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+  @media (max-width: 768px) {
+    .panels { grid-template-columns: 1fr; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .stat-row .stat-card:last-child { grid-column: span 2; }
+    .main { padding: 1rem; }
+    .topbar { padding: 0.75rem 1rem; }
+    .user-email { display: none; }
+    .timer-display { font-size: 40px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">◆ Work Dashboard</div>
+    <div class="auth-title" id="auth-title">Welcome back</div>
+    <div class="auth-sub" id="auth-sub">Sign in to your dashboard</div>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-msg" id="auth-msg"></div>
+    <label class="auth-label">Email</label>
+    <input class="auth-input" type="email" id="auth-email" placeholder="you@example.com" />
+    <label class="auth-label">Password</label>
+    <input class="auth-input" type="password" id="auth-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSubmit()" />
+    <button class="auth-btn" onclick="authSubmit()" id="auth-btn">Sign In</button>
+    <div class="auth-toggle" id="auth-toggle">
+      Don't have an account? <span onclick="toggleAuth()">Sign up</span>
+    </div>
+  </div>
+</div>
+
+<!-- APP SCREEN -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">◆ Work Dashboard</div>
+      <div class="topbar-date" id="topbar-date"></div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-email" id="user-email"></div>
+      <button class="signout-btn" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-label">Tasks complete</div>
+        <div class="stat-value" id="stat-tasks">0/0</div>
+        <div class="progress-bar"><div class="progress-fill" id="stat-progress" style="width:0%"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Time tracked today</div>
+        <div class="stat-value" id="stat-time">0h 0m</div>
+        <div class="stat-sub" id="stat-sessions">0 sessions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Open cases / tickets</div>
+        <div class="stat-value" id="stat-cases">0</div>
+        <div class="stat-sub">pending follow-up</div>
+      </div>
+    </div>
+
+    <div class="panels">
+      <!-- TIMER PANEL -->
+      <div class="panel">
+        <div class="panel-title">Time Tracker</div>
+        <div class="timer-display" id="timer-display">00:00:00</div>
+        <div class="timer-task-label" id="timer-label">No task selected</div>
+        <input class="timer-input" type="text" id="timer-task-input" placeholder="What are you working on?" />
+        <div class="timer-btns">
+          <button class="tbtn primary" id="start-btn" onclick="toggleTimer()">Start</button>
+          <button class="tbtn" onclick="logAndReset()">Log & Reset</button>
+        </div>
+        <div style="margin-top:0.25rem;">
+          <div class="panel-title" style="margin-bottom:8px;">Today's Sessions</div>
+          <div class="time-log" id="time-log">
+            <div class="loading">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TASKS PANEL -->
+      <div class="panel">
+        <div class="panel-title">To-Do List</div>
+        <div class="task-add-row">
+          <input type="text" id="task-input" placeholder="Add task, case, or ticket..." onkeydown="if(event.key==='Enter')addTask()" />
+          <select id="task-priority">
+            <option value="med">Medium</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+            <option value="case">Case/Ticket</option>
+          </select>
+          <button class="add-btn" onclick="addTask()">Add</button>
+        </div>
+        <div class="filter-row">
+          <button class="filt active" onclick="setFilter('all',this)">All</button>
+          <button class="filt" onclick="setFilter('active',this)">Active</button>
+          <button class="filt" onclick="setFilter('case',this)">Cases</button>
+          <button class="filt" onclick="setFilter('high',this)">High Priority</button>
+          <button class="filt" onclick="setFilter('done',this)">Done</button>
+        </div>
+        <div class="task-list" id="task-list">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ciyebticbmhntyvndavo.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpeWVidGljYm1obnR5dm5kYXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MzMzNTUsImV4cCI6MjA5MjMwOTM1NX0.GNQhC-z78ylmMy0lRUvIXiYq-pISIiRNzQpTZLA2sxU';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let user = null;
+let tasks = [];
+let timeLogs = [];
+let timerInterval = null;
+let timerRunning = false;
+let timerSeconds = 0;
+let sessionStart = null;
+let isSignUp = false;
+let currentFilter = 'all';
+
+// ---- AUTH ----
+async function authSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  hideAuthMessages();
+  if (!email || !password) { showAuthError('Please enter email and password.'); return; }
+  document.getElementById('auth-btn').textContent = 'Please wait...';
+  try {
+    let result;
+    if (isSignUp) {
+      result = await db.auth.signUp({ email, password });
+      if (result.error) throw result.error;
+      showAuthMsg('Account created! Check your email to confirm, then sign in.');
+      toggleAuth();
+    } else {
+      result = await db.auth.signInWithPassword({ email, password });
+      if (result.error) throw result.error;
+      user = result.data.user;
+      showApp();
+    }
+  } catch(e) {
+    showAuthError(e.message || 'Something went wrong.');
+  }
+  document.getElementById('auth-btn').textContent = isSignUp ? 'Create Account' : 'Sign In';
+}
+
+function toggleAuth() {
+  isSignUp = !isSignUp;
+  hideAuthMessages();
+  document.getElementById('auth-title').textContent = isSignUp ? 'Create account' : 'Welcome back';
+  document.getElementById('auth-sub').textContent = isSignUp ? 'Start tracking your work' : 'Sign in to your dashboard';
+  document.getElementById('auth-btn').textContent = isSignUp ? 'Create Account' : 'Sign In';
+  document.getElementById('auth-toggle').innerHTML = isSignUp
+    ? 'Already have an account? <span onclick="toggleAuth()">Sign in</span>'
+    : 'Don\'t have an account? <span onclick="toggleAuth()">Sign up</span>';
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+function showAuthMsg(msg) {
+  const el = document.getElementById('auth-msg');
+  el.textContent = msg; el.style.display = 'block';
+}
+function hideAuthMessages() {
+  document.getElementById('auth-error').style.display = 'none';
+  document.getElementById('auth-msg').style.display = 'none';
+}
+
+async function signOut() {
+  await db.auth.signOut();
+  user = null; tasks = []; timeLogs = [];
+  clearInterval(timerInterval); timerRunning = false; timerSeconds = 0;
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+// ---- SHOW APP ----
+function showApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'flex';
+  document.getElementById('user-email').textContent = user.email;
+  updateDateDisplay();
+  loadTasks();
+  loadTodayLogs();
+}
+
+function updateDateDisplay() {
+  const d = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('topbar-date').textContent = days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate();
+}
+
+// ---- TASKS ----
+async function loadTasks() {
+  document.getElementById('task-list').innerHTML = '<div class="loading">Loading tasks...</div>';
+  const { data, error } = await db.from('tasks').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+  if (error) { document.getElementById('task-list').innerHTML = '<div class="empty">Error loading tasks.</div>'; return; }
+  tasks = data || [];
+  renderTasks();
+  updateStats();
+}
+
+async function addTask() {
+  const input = document.getElementById('task-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const priority = document.getElementById('task-priority').value;
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await db.from('tasks').insert([{ user_id: user.id, text, priority, done: false, added: today }]).select();
+  if (error || !data) return;
+  tasks.unshift(data[0]);
+  input.value = '';
+  renderTasks();
+  updateStats();
+}
+
+async function toggleTask(id) {
+  const t = tasks.find(t => t.id === id);
+  if (!t) return;
+  t.done = !t.done;
+  renderTasks();
+  updateStats();
+  await db.from('tasks').update({ done: t.done }).eq('id', id);
+}
+
+async function deleteTask(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  renderTasks();
+  updateStats();
+  await db.from('tasks').delete().eq('id', id);
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTasks();
+}
+
+function badgeClass(p) { return p==='high'?'badge-high':p==='low'?'badge-low':p==='case'?'badge-case':'badge-med'; }
+function badgeLabel(p) { return p==='high'?'HIGH':p==='low'?'LOW':p==='case'?'CASE/TICKET':'MED'; }
+
+function renderTasks() {
+  let filtered = [...tasks];
+  if (currentFilter === 'active') filtered = filtered.filter(t => !t.done);
+  else if (currentFilter === 'done') filtered = filtered.filter(t => t.done);
+  else if (currentFilter === 'case') filtered = filtered.filter(t => t.priority === 'case');
+  else if (currentFilter === 'high') filtered = filtered.filter(t => t.priority === 'high');
+
+  filtered.sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    const ord = { high: 0, case: 1, med: 2, low: 3 };
+    return (ord[a.priority] || 2) - (ord[b.priority] || 2);
+  });
+
+  const el = document.getElementById('task-list');
+  if (!filtered.length) { el.innerHTML = '<div class="empty">Nothing here yet</div>'; return; }
+
+  el.innerHTML = filtered.map(t => `
+    <div class="task-item">
+      <div class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}')"></div>
+      <div class="task-body">
+        <div class="task-text ${t.done ? 'done' : ''}">${escHtml(t.text)}</div>
+        <div class="task-meta">
+          <span class="badge ${badgeClass(t.priority)}">${badgeLabel(t.priority)}</span>
+          <span class="task-date">Added ${t.added}</span>
+        </div>
+      </div>
+      <button class="task-del" onclick="deleteTask('${t.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+// ---- TIME TRACKER ----
+async function loadTodayLogs() {
+  const today = new Date().toISOString().split('T')[0];
+  const { data } = await db.from('time_logs').select('*').eq('user_id', user.id).gte('logged_at', today + 'T00:00:00').order('logged_at', { ascending: false });
+  timeLogs = data || [];
+  renderLogs();
+  updateStats();
+}
+
+function toggleTimer() {
+  if (!timerRunning) {
+    timerRunning = true;
+    sessionStart = Date.now() - timerSeconds * 1000;
+    timerInterval = setInterval(tickTimer, 1000);
+    document.getElementById('start-btn').textContent = 'Pause';
+    document.getElementById('start-btn').classList.add('running');
+    document.getElementById('start-btn').classList.remove('primary');
+    const label = document.getElementById('timer-task-input').value.trim() || 'Unnamed task';
+    document.getElementById('timer-label').textContent = label;
+  } else {
+    timerRunning = false;
+    clearInterval(timerInterval);
+    document.getElementById('start-btn').textContent = 'Resume';
+    document.getElementById('start-btn').classList.remove('running');
+    document.getElementById('start-btn').classList.add('primary');
+  }
+}
+
+function tickTimer() {
+  timerSeconds = Math.round((Date.now() - sessionStart) / 1000);
+  document.getElementById('timer-display').textContent = fmtTime(timerSeconds);
+}
+
+async function logAndReset() {
+  if (timerSeconds < 5) { resetTimerUI(); return; }
+  const label = document.getElementById('timer-task-input').value.trim() || 'Unnamed task';
+  clearInterval(timerInterval);
+  const logEntry = { user_id: user.id, label, duration_seconds: timerSeconds };
+  const { data } = await db.from('time_logs').insert([logEntry]).select();
+  if (data) timeLogs.unshift(data[0]);
+  resetTimerUI();
+  renderLogs();
+  updateStats();
+}
+
+function resetTimerUI() {
+  clearInterval(timerInterval);
+  timerRunning = false; timerSeconds = 0; sessionStart = null;
+  document.getElementById('timer-display').textContent = '00:00:00';
+  document.getElementById('start-btn').textContent = 'Start';
+  document.getElementById('start-btn').classList.add('primary');
+  document.getElementById('start-btn').classList.remove('running');
+  document.getElementById('timer-label').textContent = 'No task selected';
+  document.getElementById('timer-task-input').value = '';
+}
+
+function renderLogs() {
+  const el = document.getElementById('time-log');
+  if (!timeLogs.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">No sessions logged today</div>'; return; }
+  el.innerHTML = timeLogs.slice(0, 8).map(l => {
+    const t = new Date(l.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `<div class="log-item">
+      <span class="log-label">${escHtml(l.label)}</span>
+      <span class="log-dur">${fmtDur(l.duration_seconds)}</span>
+      <span class="log-time">${t}</span>
+    </div>`;
+  }).join('');
+}
+
+// ---- STATS ----
+function updateStats() {
+  const all = tasks;
+  const done = all.filter(t => t.done);
+  document.getElementById('stat-tasks').textContent = done.length + '/' + all.length;
+  const pct = all.length ? Math.round(done.length / all.length * 100) : 0;
+  document.getElementById('stat-progress').style.width = pct + '%';
+
+  const totalSec = timeLogs.reduce((a, l) => a + l.duration_seconds, 0);
+  const h = Math.floor(totalSec / 3600), m = Math.floor(totalSec % 3600 / 60);
+  document.getElementById('stat-time').textContent = h + 'h ' + m + 'm';
+  document.getElementById('stat-sessions').textContent = timeLogs.length + ' session' + (timeLogs.length !== 1 ? 's' : '') + ' today';
+
+  const openCases = tasks.filter(t => t.priority === 'case' && !t.done).length;
+  document.getElementById('stat-cases').textContent = openCases;
+}
+
+// ---- UTILS ----
+function fmtTime(s) { const p = n => String(n).padStart(2,'0'); return p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60); }
+function fmtDur(s) { const h = Math.floor(s/3600), m = Math.floor(s%3600/60); return h > 0 ? h+'h '+m+'m' : m+'m '+Math.floor(s%60)+'s'; }
+function escHtml(str) { return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ---- INIT ----
+(async () => {
+  const { data } = await db.auth.getSession();
+  if (data?.session?.user) {
+    user = data.session.user;
+    showApp();
+  }
+})();
+</script>
+</body>
+</html>
